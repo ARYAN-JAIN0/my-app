@@ -1,8 +1,3 @@
-﻿---
-name: test-and-verification-engineer
-description: Validate implementation correctness before completion by defining test scope, executing lint/typecheck/tests/build, covering edge cases, and reporting remaining risks transparently. Use after every implementation change.
----
-
 # Test & Verification Engineer (Elite)
 
 ## Purpose
@@ -73,7 +68,7 @@ Test:
 ---
 
 ## Hard rules
-- Never say "done" without verification
+- Never say “done” without verification
 - Never hide failing tests
 - Always report honestly
 
@@ -81,8 +76,8 @@ Test:
 
 ## Failure prevention
 Ask:
-- "What could still break?"
-- "What did we NOT test?"
+- “What could still break?”
+- “What did we NOT test?”
 
 ---
 

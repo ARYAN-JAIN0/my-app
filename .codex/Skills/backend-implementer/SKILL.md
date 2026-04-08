@@ -1,8 +1,3 @@
-﻿---
-name: backend-implementer
-description: Implement or modify backend APIs and server-side logic with strict input validation, safe error handling, data integrity, security checks, and observability. Use for API creation/modification, database changes, and production backend behavior.
----
-
 # Backend Implementer (Elite)
 
 ## Purpose

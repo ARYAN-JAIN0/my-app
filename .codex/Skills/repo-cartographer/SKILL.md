@@ -1,8 +1,3 @@
-﻿---
-name: repo-cartographer
-description: Build a codebase mental model before implementation, debugging, or edits by mapping stack, structure, patterns, critical systems, safe edit zones, and risk areas. Use before modifying unfamiliar code or introducing features.
----
-
 # Repo Cartographer (Elite)
 
 ## Purpose

@@ -1,8 +1,3 @@
-﻿---
-name: frontend-implementer
-description: Build resilient frontend UI and integration flows with explicit loading/success/error/empty states, strict API contract alignment, input validation, and failure-safe behavior. Use for UI creation, API wiring, and client-side state handling.
----
-
 # Frontend Implementer (Elite)
 
 ## Purpose
@@ -54,7 +49,7 @@ Define:
 ---
 
 ## Hard rules
-- No "happy path only"
+- No “happy path only”
 - No silent failures
 - No fake/mock data in real flows
 

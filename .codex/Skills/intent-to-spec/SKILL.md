@@ -1,9 +1,4 @@
-﻿---
-name: intent-to-spec
-description: Convert ambiguous or high-level product requests into a precise, implementation-ready engineering specification before any non-trivial implementation. Use when requirements are incomplete, multiple interpretations are possible, or the request needs structured goal/outcome/input-output/constraints/edge-case definition.
----
-
-# Intent -> Spec (Elite)
+# Intent → Spec (Elite)
 
 ## Purpose
 Convert ambiguous user input into a precise, implementation-ready engineering specification.
@@ -33,7 +28,7 @@ Wrong understanding = guaranteed wrong implementation.
 ### Step 1: Extract true intent
 - What is the user REALLY trying to achieve?
 - What problem is being solved?
-- What is success from the user's perspective?
+- What is success from the user’s perspective?
 
 ---
 
@@ -75,7 +70,7 @@ Prevent scope creep:
 
 ### Step 7: Define success criteria
 Clear, testable:
-- "Feature works" is invalid
+- “Feature works” is invalid
 - Must be verifiable
 
 ---
@@ -122,14 +117,14 @@ List:
 ## Hard rules
 - Never skip this for complex tasks
 - Never proceed if spec is unclear
-- If ambiguity is high -> state assumption explicitly
+- If ambiguity is high → state assumption explicitly
 
 ---
 
 ## Failure prevention
 Before finishing:
-- Ask: "Could this be interpreted differently?"
-- If yes -> refine spec
+- Ask: “Could this be interpreted differently?”
+- If yes → refine spec
 
 ---
 
