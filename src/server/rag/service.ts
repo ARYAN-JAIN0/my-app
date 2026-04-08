@@ -110,3 +110,66 @@ export async function retrieveContext(query: string, extraContext: string[] = []
     .filter(Boolean)
     .join("\n\n");
 }
+
+export async function listKnowledgeDocuments() {
+  const db = getDb();
+  const userId = await getDefaultUserId();
+  const docs = await db.knowledgeRule.findMany({
+    where: { userId },
+    include: {
+      _count: {
+        select: { chunks: true },
+      },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  return docs.map((doc) => ({
+    id: doc.id,
+    category: doc.category,
+    title: doc.title,
+    active: doc.active,
+    chunkCount: doc._count.chunks,
+    updatedAt: doc.updatedAt.toISOString(),
+    createdAt: doc.createdAt.toISOString(),
+  }));
+}
+
+export async function deleteKnowledgeDocument(id: string) {
+  const db = getDb();
+  const userId = await getDefaultUserId();
+  const doc = await db.knowledgeRule.findUnique({ where: { id } });
+  if (!doc || doc.userId !== userId) {
+    return false;
+  }
+  await db.knowledgeRule.delete({ where: { id } });
+  return true;
+}
+
+export async function reindexKnowledgeDocuments() {
+  const db = getDb();
+  const userId = await getDefaultUserId();
+  const docs = await db.knowledgeRule.findMany({
+    where: { userId, active: true },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  let chunkCount = 0;
+  for (const doc of docs) {
+    await db.knowledgeChunk.deleteMany({ where: { knowledgeRuleId: doc.id } });
+    const chunks = chunkText(doc.content, 80);
+    chunkCount += chunks.length;
+    if (chunks.length > 0) {
+      await db.knowledgeChunk.createMany({
+        data: chunks.map((content, index) => ({
+          knowledgeRuleId: doc.id,
+          chunkIndex: index,
+          content,
+          tokenCount: content.split(/\s+/).filter(Boolean).length,
+        })),
+      });
+    }
+  }
+
+  return { documents: docs.length, chunks: chunkCount };
+}
