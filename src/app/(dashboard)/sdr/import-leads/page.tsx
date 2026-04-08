@@ -1,7 +1,7 @@
 "use client";
 
 import { ImportProcessor } from "@/features/sdr/components/sdr-primitives";
-import { importSteps } from "@/features/sdr/constants/sdr-ui.mock";
+import { importSteps } from "@/features/sdr/constants/import-steps";
 import { useImportFlow } from "@/features/sdr/hooks/use-import-flow";
 
 export default function ImportLeadsPage() {

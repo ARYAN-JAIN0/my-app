@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { NextRequest } from "next/server";
 import { ok } from "@/server/core/api";
 import { getDb } from "@/server/core/db";
@@ -37,19 +38,36 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const body = await request.json();
-    if (!body.leadId || !body.lifecycle) {
-      return toSuccessResponse({ success: false, reason: "validation_error", message: "leadId and lifecycle are required" }, 400);
+    const bodySchema = z.object({
+      leadId: z.string().min(1),
+      lifecycle: z.enum(["negotiating", "won", "lost", "replied"]),
+    });
+    const parse = bodySchema.safeParse(await request.json());
+    if (!parse.success) {
+      return toSuccessResponse(
+        { success: false, reason: "validation_error", message: parse.error.issues[0]?.message || "Invalid payload" },
+        400
+      );
     }
 
     const db = getDb();
+    const userId = await getDefaultUserId();
     const lead = await db.lead.update({
-      where: { id: body.leadId },
+      where: { id: parse.data.leadId },
       data: {
-        lifecycle: body.lifecycle,
-        needsAction: body.lifecycle !== "won" && body.lifecycle !== "lost",
+        lifecycle: parse.data.lifecycle,
+        needsAction: parse.data.lifecycle !== "won" && parse.data.lifecycle !== "lost",
       },
     });
+    if (parse.data.lifecycle === "won") {
+      await db.analyticsEvent.create({
+        data: {
+          userId,
+          type: "lead_converted",
+          leadId: lead.id,
+        },
+      });
+    }
 
     return toSuccessResponse(ok(lead));
   } catch (error) {

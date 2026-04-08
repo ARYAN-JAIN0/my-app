@@ -1,32 +1,45 @@
+import { z } from "zod";
 import { ok } from "@/server/core/api";
 import { toErrorResponse, toSuccessResponse } from "@/server/core/http";
 import { regenerateDraft, rejectDraft, saveDraft } from "@/server/orchestrators/workspace-orchestrator";
 
+const payloadSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("save"),
+    subject: z.string().trim().min(1),
+    body: z.string().trim().min(1),
+  }),
+  z.object({
+    action: z.literal("regenerate"),
+  }),
+  z.object({
+    action: z.literal("reject"),
+  }),
+]);
+
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const body = await request.json();
-    const action = body.action as "save" | "regenerate" | "reject";
+    const parseResult = payloadSchema.safeParse(await request.json());
+    if (!parseResult.success) {
+      return toSuccessResponse(
+        { success: false, reason: "validation_error", message: parseResult.error.issues[0]?.message || "Invalid payload" },
+        400
+      );
+    }
 
-    if (action === "save") {
-      if (!body.subject || !body.body) {
-        return toSuccessResponse({ success: false, reason: "validation_error", message: "subject and body are required" }, 400);
-      }
-      const message = await saveDraft(id, body.subject, body.body);
+    if (parseResult.data.action === "save") {
+      const message = await saveDraft(id, parseResult.data.subject, parseResult.data.body);
       return toSuccessResponse(ok(message));
     }
 
-    if (action === "regenerate") {
+    if (parseResult.data.action === "regenerate") {
       const message = await regenerateDraft(id);
       return toSuccessResponse(ok(message));
     }
 
-    if (action === "reject") {
-      await rejectDraft(id);
-      return toSuccessResponse(ok({ leadId: id, status: "rejected" }));
-    }
-
-    return toSuccessResponse({ success: false, reason: "validation_error", message: "Unsupported action" }, 400);
+    await rejectDraft(id);
+    return toSuccessResponse(ok({ leadId: id, status: "rejected" }));
   } catch (error) {
     return toErrorResponse(error);
   }

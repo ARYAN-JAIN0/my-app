@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { NextRequest } from "next/server";
 import { ok } from "@/server/core/api";
 import { toErrorResponse, toSuccessResponse } from "@/server/core/http";
@@ -18,11 +19,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    if (!body.category || !body.title || !body.content) {
-      return toSuccessResponse({ success: false, reason: "validation_error", message: "category, title and content are required" }, 400);
+    const schema = z.object({
+      category: z.string().trim().min(1),
+      title: z.string().trim().min(1),
+      content: z.string().trim().min(1),
+    });
+    const parse = schema.safeParse(await request.json());
+    if (!parse.success) {
+      return toSuccessResponse(
+        { success: false, reason: "validation_error", message: parse.error.issues[0]?.message || "Invalid payload" },
+        400
+      );
     }
-    const rule = await ingestKnowledge(body.category, body.title, body.content);
+    const rule = await ingestKnowledge(parse.data.category, parse.data.title, parse.data.content);
     return toSuccessResponse(ok(rule), 201);
   } catch (error) {
     return toErrorResponse(error);

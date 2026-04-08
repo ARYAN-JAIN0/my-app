@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Menu, RefreshCw, Settings } from "lucide-react";
 import { usePathname } from "next/navigation";
 
@@ -16,6 +17,8 @@ const titles: Record<string, string> = {
   "/finance": "Finance Dashboard",
   "/negotiation": "Negotiation",
   "/rag": "RAG Workspace",
+  "/settings": "Workspace Settings",
+  "/support": "Support",
 };
 
 export function Header({ onOpenMobileMenu }: HeaderProps) {
@@ -41,17 +44,18 @@ export function Header({ onOpenMobileMenu }: HeaderProps) {
         <button
           type="button"
           className="hidden items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-foreground/60 transition-colors hover:bg-surface-bright md:flex"
+          onClick={() => window.location.reload()}
         >
           <RefreshCw className="h-3.5 w-3.5" />
           Refresh
         </button>
-        <button
-          type="button"
+        <Link
+          href="/settings"
           className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-surface-bright hover:text-foreground"
           aria-label="Settings"
         >
           <Settings className="h-4 w-4" />
-        </button>
+        </Link>
         <div className="flex items-center gap-3 rounded-lg border border-outline-variant/20 bg-surface-container px-2.5 py-1.5">
           <div className="text-right leading-tight">
             <p className="text-xs font-semibold text-foreground">Alex Rivera</p>

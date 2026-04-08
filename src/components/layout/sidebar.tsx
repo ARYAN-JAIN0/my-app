@@ -26,8 +26,8 @@ const primaryRoutes = [
 ];
 
 const secondaryRoutes = [
-  { label: "Settings", href: "#", icon: Settings },
-  { label: "Support", href: "#", icon: HelpCircle },
+  { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Support", href: "/support", icon: HelpCircle },
 ];
 
 function isActivePath(pathname: string, href: string) {

@@ -30,7 +30,8 @@ export default function SdrWorkspacePage() {
     saveDraft,
     regenerateDraft,
     rejectDraft,
-    approveAndSend,
+    approveDraft,
+    sendApproved,
   } = useWorkspaceData();
 
   const [aiPolishing, setAiPolishing] = useState(true);
@@ -133,7 +134,11 @@ export default function SdrWorkspacePage() {
           />
         </div>
         <div className="xl:col-span-3">
-          <SignalPanel score={selectedLead.score} breakdown={selectedLead.signalBreakdown} />
+          <SignalPanel
+            score={selectedLead.emailScore}
+            breakdown={selectedLead.signalBreakdown}
+            flags={selectedLead.flags}
+          />
         </div>
       </div>
 
@@ -178,10 +183,29 @@ export default function SdrWorkspacePage() {
             <button
               type="button"
               className="btn-primary-lithic rounded-lg px-6 py-2.5 label-meta shadow-[0_0_20px_rgb(163_166_255_/_0.3)]"
-              onClick={approveAndSend}
+              onClick={approveDraft}
+              disabled={isSaving || selectedLead.status === "ready"}
+            >
+              Approve
+            </button>
+            <button
+              type="button"
+              className="btn-primary-lithic rounded-lg px-6 py-2.5 label-meta shadow-[0_0_20px_rgb(52_181_250_/_0.3)]"
+              onClick={sendApproved}
+              disabled={isSaving || selectedLead.status !== "ready"}
+            >
+              Send
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-outline-variant/25 px-4 py-2 label-meta text-foreground/70"
+              onClick={async () => {
+                await approveDraft();
+                await sendApproved();
+              }}
               disabled={isSaving}
             >
-              Approve &amp; Send
+              Approve + Send
             </button>
             <button
               type="button"

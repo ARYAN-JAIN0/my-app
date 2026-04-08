@@ -113,17 +113,34 @@ export function useWorkspaceData() {
     }
   }, [refresh, selectedLead]);
 
-  const approveAndSend = useCallback(async () => {
+  const approveDraft = useCallback(async () => {
     if (!selectedLead) return;
     setIsSaving(true);
     setError(null);
     try {
-      await requestJson(`/api/sdr/leads/${selectedLead.id}/approve-send`, {
+      await requestJson(`/api/sdr/leads/${selectedLead.id}/approve`, {
         method: "POST",
       });
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to approve and send");
+      setError(err instanceof Error ? err.message : "Failed to approve draft");
+      throw err;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [refresh, selectedLead]);
+
+  const sendApproved = useCallback(async () => {
+    if (!selectedLead) return;
+    setIsSaving(true);
+    setError(null);
+    try {
+      await requestJson(`/api/sdr/leads/${selectedLead.id}/send`, {
+        method: "POST",
+      });
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send approved draft");
       throw err;
     } finally {
       setIsSaving(false);
@@ -151,6 +168,7 @@ export function useWorkspaceData() {
     saveDraft,
     regenerateDraft,
     rejectDraft,
-    approveAndSend,
+    approveDraft,
+    sendApproved,
   };
 }

@@ -91,6 +91,7 @@ model User {
   followups      Followup[]
   threads        Thread[]
   messages       Message[]
+  emailTemplates EmailTemplate[]
 }
 
 model GmailAccount {
@@ -362,4 +363,21 @@ model ProcessingEvent {
   @@index([leadId])
   @@index([messageId])
   @@index([importJobId])
+}
+
+model EmailTemplate {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  category    String   @default("outbound")
+  subject     String
+  body        String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, category])
+  @@index([userId, active])
+  @@unique([userId, name])
 }

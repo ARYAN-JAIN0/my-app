@@ -23,6 +23,12 @@ export interface WorkspaceLeadItem {
   body?: string;
   signalBreakdown?: Record<string, number>;
   confidenceScore?: number;
+  emailScore: number;
+  flags: Array<{
+    title: string;
+    detail: string;
+    severity: "info" | "warning" | "critical";
+  }>;
 }
 
 export interface ImportStepItem {

@@ -58,6 +58,31 @@ export async function exchangeGoogleCode(code: string) {
   return response.json();
 }
 
+export async function refreshGoogleAccessToken(refreshToken: string) {
+  const cfg = getGoogleOAuthConfig();
+  if (!cfg.clientId || !cfg.clientSecret) {
+    throw new AppError("missing_google_auth", 503, "Google OAuth is not configured");
+  }
+
+  const response = await fetch(GOOGLE_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: cfg.clientId,
+      client_secret: cfg.clientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
+  });
+
+  if (!response.ok) {
+    const txt = await response.text();
+    throw new AppError("missing_google_auth", 502, "Failed to refresh Google token", txt);
+  }
+
+  return response.json() as Promise<{ access_token: string; expires_in?: number; scope?: string }>;
+}
+
 export async function sendGmailMessage(account: GmailAccount | null, to: string, subject: string, body: string, threadId?: string) {
   if (!account?.accessToken) {
     throw new AppError("missing_google_auth", 503, "No connected Gmail account");

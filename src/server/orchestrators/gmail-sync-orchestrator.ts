@@ -1,6 +1,6 @@
 import { getDb } from "../core/db";
 import { getDefaultUserId } from "../core/identity";
-import { getGmailMessage, listRecentInboxMessages } from "../integrations/gmail";
+import { getGmailMessage, listRecentInboxMessages, refreshGoogleAccessToken } from "../integrations/gmail";
 import { processInboundReply } from "./reply-orchestrator";
 
 function extractHeader(headers: Array<{ name: string; value: string }>, key: string) {
@@ -15,7 +15,19 @@ function decodeBody(data?: string) {
 export async function syncRecentReplies() {
   const db = getDb();
   const userId = await getDefaultUserId();
-  const account = await db.gmailAccount.findFirst({ where: { userId }, orderBy: { updatedAt: "desc" } });
+  let account = await db.gmailAccount.findFirst({ where: { userId }, orderBy: { updatedAt: "desc" } });
+  if (account?.refreshToken && account.expiryDate && account.expiryDate <= new Date(Date.now() + 60_000)) {
+    const refreshed = await refreshGoogleAccessToken(account.refreshToken);
+    account = await db.gmailAccount.update({
+      where: { id: account.id },
+      data: {
+        accessToken: refreshed.access_token,
+        expiryDate: refreshed.expires_in ? new Date(Date.now() + refreshed.expires_in * 1000) : account.expiryDate,
+        scope: refreshed.scope || account.scope,
+        connectedAt: new Date(),
+      },
+    });
+  }
 
   const listing = await listRecentInboxMessages(account);
   const messages = listing.messages ?? [];

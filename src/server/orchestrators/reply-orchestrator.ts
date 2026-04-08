@@ -119,6 +119,15 @@ export async function processInboundReply(params: {
       { userId, type: "reply_draft_generated", leadId, messageId: replyDraft.id },
     ],
   });
+  await db.processingEvent.create({
+    data: {
+      userId,
+      eventType: "reply.received",
+      leadId,
+      messageId: inbound.id,
+      payload: { intent: analysis.intent } as Prisma.InputJsonValue,
+    },
+  });
 
   return {
     inbound,

@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { exchangeGoogleCode } from "@/server/integrations/gmail";
 import { getDb } from "@/server/core/db";
 import { getDefaultUserId } from "@/server/core/identity";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
+  const state = request.nextUrl.searchParams.get("state");
+  const cookieStore = await cookies();
+  const expectedState = cookieStore.get("revo_gmail_oauth_state")?.value;
   if (!code) {
     return NextResponse.redirect(new URL("/sdr?gmail=missing_code", request.url));
+  }
+  if (!state || !expectedState || state !== expectedState) {
+    return NextResponse.redirect(new URL("/sdr?gmail=invalid_state", request.url));
   }
 
   try {
@@ -50,8 +57,10 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    cookieStore.delete("revo_gmail_oauth_state");
     return NextResponse.redirect(new URL("/sdr?gmail=connected", request.url));
   } catch {
+    cookieStore.delete("revo_gmail_oauth_state");
     return NextResponse.redirect(new URL("/sdr?gmail=failed", request.url));
   }
 }

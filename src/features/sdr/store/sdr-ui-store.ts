@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { workspaceLeads } from "../constants/sdr-ui.mock";
 
 type ImportFlowState = "idle" | "uploading" | "processing" | "complete" | "error";
 type QueueFilter = "priority" | "score" | "needs-action";
@@ -26,7 +25,7 @@ interface SdrUiState {
 }
 
 export const useSdrUiStore = create<SdrUiState>((set) => ({
-  selectedLeadId: workspaceLeads[0]?.id ?? "",
+  selectedLeadId: "",
   queueFilter: "priority",
   aiPolishing: true,
   importFlowState: "idle",

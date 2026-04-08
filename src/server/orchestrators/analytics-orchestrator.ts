@@ -7,8 +7,8 @@ export async function getAnalyticsSummary() {
 
   const [totalLeads, contacted, replies, approvals, approved] = await Promise.all([
     db.lead.count({ where: { userId } }),
-    db.lead.count({ where: { userId, lifecycle: { in: ["sent", "replied", "negotiating", "won", "lost"] } } }),
-    db.lead.count({ where: { userId, lifecycle: { in: ["replied", "negotiating", "won", "lost"] } } }),
+    db.analyticsEvent.count({ where: { userId, type: "email_sent" } }),
+    db.analyticsEvent.count({ where: { userId, type: "reply_received" } }),
     db.approval.count({ where: { userId } }),
     db.approval.count({ where: { userId, status: "approved" } }),
   ]);
@@ -30,46 +30,53 @@ export async function getLiveProcessingStream(params: { search?: string; status?
   const db = getDb();
   const userId = await getDefaultUserId();
 
-  const leads = await db.lead.findMany({
+  const statusToTypes: Record<string, string[]> = {
+    converted: ["lead_converted"],
+    responded: ["reply_received"],
+    contacted: ["email_sent"],
+  };
+  const eventTypes = params.status && params.status !== "all" ? statusToTypes[params.status] || [] : ["email_sent", "reply_received", "lead_converted", "lead_created", "draft_generated"];
+
+  const events = await db.analyticsEvent.findMany({
     where: {
       userId,
-      ...(params.search
-        ? {
-            OR: [
-              { firstName: { contains: params.search, mode: "insensitive" } },
-              { lastName: { contains: params.search, mode: "insensitive" } },
-              { company: { contains: params.search, mode: "insensitive" } },
-            ],
-          }
-        : {}),
-      ...(params.status && params.status !== "all"
-        ? {
-            lifecycle:
-              params.status === "converted"
-                ? "won"
-                : params.status === "responded"
-                ? "replied"
-                : "sent",
-          }
-        : {}),
+      type: { in: eventTypes.length > 0 ? eventTypes : ["email_sent", "reply_received"] },
     },
-    orderBy: { updatedAt: "desc" },
+    orderBy: { createdAt: "desc" },
     take: 200,
   });
 
-  return leads.map((lead) => ({
-    id: lead.id,
-    leadName: `${lead.firstName} ${lead.lastName}`,
-    company: lead.company,
-    status:
-      lead.lifecycle === "won"
-        ? "converted"
-        : lead.lifecycle === "replied" || lead.lifecycle === "negotiating"
-        ? "responded"
-        : "contacted",
-    signalScore: lead.score || 0,
-    timestamp: lead.updatedAt.toISOString(),
-  }));
+  const leadIds = [...new Set(events.map((event) => event.leadId).filter(Boolean) as string[])];
+  const leads = leadIds.length > 0 ? await db.lead.findMany({ where: { id: { in: leadIds } } }) : [];
+  const leadMap = new Map(leads.map((lead) => [lead.id, lead]));
+
+  return events
+    .map((event) => {
+      const lead = event.leadId ? leadMap.get(event.leadId) : null;
+      if (!lead) return null;
+      const leadName = `${lead.firstName} ${lead.lastName}`.trim();
+      const status =
+        event.type === "lead_converted"
+          ? "converted"
+          : event.type === "reply_received"
+          ? "responded"
+          : "contacted";
+
+      return {
+        id: event.id,
+        leadName,
+        company: lead.company,
+        status,
+        signalScore: lead.score || 0,
+        timestamp: event.createdAt.toISOString(),
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item))
+    .filter((item) => {
+      if (!params.search) return true;
+      const query = params.search.toLowerCase();
+      return item.leadName.toLowerCase().includes(query) || item.company.toLowerCase().includes(query);
+    });
 }
 
 export async function getFunnelMetrics() {
@@ -78,8 +85,8 @@ export async function getFunnelMetrics() {
 
   const [processed, contacted, converted] = await Promise.all([
     db.lead.count({ where: { userId } }),
-    db.lead.count({ where: { userId, lifecycle: { in: ["sent", "replied", "negotiating", "won", "lost"] } } }),
-    db.lead.count({ where: { userId, lifecycle: "won" } }),
+    db.analyticsEvent.count({ where: { userId, type: "email_sent" } }),
+    db.analyticsEvent.count({ where: { userId, type: "lead_converted" } }),
   ]);
 
   return { processed, contacted, converted };
@@ -105,11 +112,7 @@ export async function getDerivedInsights() {
   const highScoring = await db.lead.count({ where: { userId, score: { gte: 90 } } });
   const total = await db.lead.count({ where: { userId } });
   const rejectedPricing = await db.message.count({
-    where: {
-      userId,
-      lifecycle: "rejected",
-      replyIntent: "pricing",
-    },
+    where: { userId, lifecycle: "rejected", replyIntent: "pricing" },
   });
 
   return {

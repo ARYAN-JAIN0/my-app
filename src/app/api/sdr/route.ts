@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { z } from "zod";
 import { ok } from "@/server/core/api";
 import { toErrorResponse, toSuccessResponse } from "@/server/core/http";
 import { getDb } from "@/server/core/db";
@@ -68,24 +69,37 @@ export async function POST(request: Request) {
   try {
     const db = getDb();
     const userId = await getDefaultUserId();
-    const body = await request.json();
-
-    if (!body.firstName || !body.lastName || !body.email || !body.company) {
-      return toSuccessResponse({ success: false, reason: "validation_error", message: "Missing required fields" }, 400);
+    const schema = z.object({
+      firstName: z.string().trim().min(1),
+      lastName: z.string().trim().min(1),
+      email: z.string().email(),
+      company: z.string().trim().min(1),
+      title: z.string().optional(),
+      phone: z.string().optional(),
+      source: z.string().optional(),
+      priority: z.string().optional(),
+      notes: z.string().optional(),
+    });
+    const parse = schema.safeParse(await request.json());
+    if (!parse.success) {
+      return toSuccessResponse(
+        { success: false, reason: "validation_error", message: parse.error.issues[0]?.message || "Invalid payload" },
+        400
+      );
     }
 
     const lead = await db.lead.create({
       data: {
         userId,
-        firstName: body.firstName,
-        lastName: body.lastName,
-        email: body.email,
-        company: body.company,
-        title: body.title || null,
-        phone: body.phone || null,
-        source: body.source || "website",
-        priority: body.priority || "medium",
-        notes: body.notes || null,
+        firstName: parse.data.firstName,
+        lastName: parse.data.lastName,
+        email: parse.data.email,
+        company: parse.data.company,
+        title: parse.data.title || null,
+        phone: parse.data.phone || null,
+        source: parse.data.source || "website",
+        priority: parse.data.priority || "medium",
+        notes: parse.data.notes || null,
         lifecycle: "imported",
       },
     });

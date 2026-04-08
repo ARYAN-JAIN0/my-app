@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface ApiEnvelope<T> {
   success: boolean;
@@ -32,7 +32,7 @@ export default function NegotiationPage() {
   const [rows, setRows] = useState<NegotiationRow[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     setError(null);
     try {
       const data = await requestJson<NegotiationRow[]>("/api/negotiation");
@@ -40,10 +40,18 @@ export default function NegotiationPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load negotiations");
     }
-  };
+  }, []);
 
   useEffect(() => {
-    refresh();
+    const load = async () => {
+      try {
+        const data = await requestJson<NegotiationRow[]>("/api/negotiation");
+        setRows(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load negotiations");
+      }
+    };
+    void load();
   }, []);
 
   return (

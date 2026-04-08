@@ -181,6 +181,8 @@ export function ComposerPanel({
   onBodyChange: (value: string) => void;
   onToggleAiPolishing: () => void;
 }) {
+  const match = Math.max(0, Math.min(100, Math.round(((lead.confidenceScore ?? 0) * 100))));
+
   return (
     <section className="space-y-4 rounded-xl bg-surface-container p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -198,11 +200,14 @@ export function ComposerPanel({
         <div className="text-right">
           <div className="mb-1 flex items-center gap-2">
             <div className="h-1.5 w-24 overflow-hidden rounded-full bg-black">
-              <div className="h-full w-[98%] bg-primary shadow-[0_0_10px_rgb(163_166_255_/_0.7)]" />
+              <div
+                className="h-full bg-primary shadow-[0_0_10px_rgb(163_166_255_/_0.7)]"
+                style={{ width: `${Math.max(5, match)}%` }}
+              />
             </div>
-            <span className="text-sm font-bold text-primary">98% Match</span>
+            <span className="text-sm font-bold text-primary">{match}% Match</span>
           </div>
-          <p className="label-meta text-muted-foreground">Tier 1 Strategic ICP</p>
+          <p className="label-meta text-muted-foreground">Confidence-driven match score</p>
         </div>
       </div>
 
@@ -262,9 +267,11 @@ export function ComposerPanel({
 export function SignalPanel({
   score = 0,
   breakdown = {},
+  flags = [],
 }: {
   score?: number;
   breakdown?: Record<string, number>;
+  flags?: Array<{ title: string; detail: string; severity: "info" | "warning" | "critical" }>;
 }) {
   const icpFit = Math.max(0, Math.min(100, Math.round((breakdown.icpFit ?? 0.4) * 100)));
   const relevance = Math.max(0, Math.min(100, Math.round((breakdown.relevance ?? 0.4) * 100)));
@@ -300,9 +307,9 @@ export function SignalPanel({
         </h4>
         <div className="space-y-3">
           {[
-            ["Hyper-Personalized", "Mentioned recent hiring surge"],
-            ["Value Proposition", "Clear link to 3x volume increase"],
-            ["Call to Action", "Specific and low friction"],
+            ["Signal Coherence", `ICP ${icpFit}% / Relevance ${relevance}% / Intent ${intent}%`],
+            ["Confidence", `Model confidence ${Math.round((breakdown.intent ?? 0) * 100)}% on intent channel`],
+            ["Draft Readiness", score >= 70 ? "Ready for approval workflow" : "Needs manual review before send"],
           ].map(([title, subtitle]) => (
             <div key={title} className="flex gap-3">
               <CheckCircle2 className="mt-0.5 h-4 w-4 text-secondary" />
@@ -320,11 +327,20 @@ export function SignalPanel({
           <AlertTriangle className="h-4 w-4" />
           Flags
         </h4>
-        <div className="rounded-lg bg-tertiary/5 p-3">
-          <p className="text-sm font-semibold text-foreground">Competitor Mention</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            TechFlow is a direct competitor of Veridian in the EMEA region.
-          </p>
+        <div className="space-y-3">
+          {flags.length === 0 && (
+            <div className="rounded-lg bg-secondary/5 p-3">
+              <p className="text-sm font-semibold text-foreground">No blocking flags</p>
+              <p className="mt-1 text-xs text-muted-foreground">Draft quality checks passed.</p>
+            </div>
+          )}
+          {flags.map((flag) => (
+            <div key={`${flag.title}-${flag.detail}`} className="rounded-lg bg-tertiary/5 p-3">
+              <p className="text-sm font-semibold text-foreground">{flag.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{flag.detail}</p>
+              <p className="mt-1 text-[10px] uppercase tracking-wide text-tertiary">{flag.severity}</p>
+            </div>
+          ))}
         </div>
       </article>
     </div>
@@ -434,7 +450,7 @@ export function ImportProcessor({
               <div>
                 <h3 className="font-headline text-4xl font-bold display-tight text-white">Quantum Processing</h3>
                 <p className="text-lg text-muted-foreground">
-                  Analyzing 150 new leads against your ICP and CRM...
+                  Analyzing uploaded leads against your ICP and CRM...
                 </p>
               </div>
             </div>
@@ -655,8 +671,10 @@ export function FunnelCard({
       </div>
       <div className="mt-8 border-t border-outline-variant/15 pt-6 text-sm text-muted-foreground">
         <p>
-          AI predicts <span className="font-bold text-white">45+ new conversions</span> by EOD based on current
-          engagement velocity.
+          Current conversion ratio:{" "}
+          <span className="font-bold text-white">
+            {metrics.processed > 0 ? `${((metrics.converted / metrics.processed) * 100).toFixed(1)}%` : "0.0%"}
+          </span>
         </p>
       </div>
     </article>

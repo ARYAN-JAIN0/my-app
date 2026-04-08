@@ -22,6 +22,14 @@ export async function startImportJob(filename: string, fileBuffer: Buffer) {
       totalRows: importRows.length,
     },
   });
+  await db.processingEvent.create({
+    data: {
+      userId,
+      eventType: "import.started",
+      importJobId: job.id,
+      payload: { filename } as Prisma.InputJsonValue,
+    },
+  });
 
   let importedRows = 0;
   let duplicateRows = 0;
@@ -38,6 +46,14 @@ export async function startImportJob(filename: string, fileBuffer: Buffer) {
           status: "invalid",
           rawData: row.raw as Prisma.InputJsonValue,
           errorReason: row.issues.join("; "),
+        },
+      });
+      await db.processingEvent.create({
+        data: {
+          userId,
+          eventType: "import.row_invalid",
+          importJobId: job.id,
+          payload: { rowNumber: row.rowNumber, issues: row.issues } as Prisma.InputJsonValue,
         },
       });
       continue;
@@ -63,6 +79,15 @@ export async function startImportJob(filename: string, fileBuffer: Buffer) {
           leadId: existing.id,
           rawData: row.raw as Prisma.InputJsonValue,
           errorReason: "Duplicate by email+company",
+        },
+      });
+      await db.processingEvent.create({
+        data: {
+          userId,
+          eventType: "import.row_duplicate",
+          importJobId: job.id,
+          leadId: existing.id,
+          payload: { rowNumber: row.rowNumber } as Prisma.InputJsonValue,
         },
       });
       continue;
@@ -92,6 +117,23 @@ export async function startImportJob(filename: string, fileBuffer: Buffer) {
           confidenceScore: leadScore.confidence,
           signalBreakdown: leadScore.signals as Prisma.InputJsonValue,
           needsAction: classifyNeedsAction("scored"),
+        },
+      });
+      await db.processingEvent.create({
+        data: {
+          userId,
+          eventType: "lead.created",
+          importJobId: job.id,
+          leadId: lead.id,
+          payload: { rowNumber: row.rowNumber } as Prisma.InputJsonValue,
+        },
+      });
+      await db.analyticsEvent.create({
+        data: {
+          userId,
+          type: "lead_created",
+          leadId: lead.id,
+          metadata: { importJobId: job.id, rowNumber: row.rowNumber } as Prisma.InputJsonValue,
         },
       });
 
@@ -125,6 +167,23 @@ export async function startImportJob(filename: string, fileBuffer: Buffer) {
           status: "pending",
         },
       });
+      await db.processingEvent.create({
+        data: {
+          userId,
+          eventType: "draft.generated",
+          importJobId: job.id,
+          leadId: lead.id,
+          messageId: message.id,
+        },
+      });
+      await db.analyticsEvent.create({
+        data: {
+          userId,
+          type: "draft_generated",
+          leadId: lead.id,
+          messageId: message.id,
+        },
+      });
 
       await db.lead.update({
         where: { id: lead.id },
@@ -156,6 +215,17 @@ export async function startImportJob(filename: string, fileBuffer: Buffer) {
           errorReason: error instanceof Error ? error.message : "Row import failed",
         },
       });
+      await db.processingEvent.create({
+        data: {
+          userId,
+          eventType: "import.row_failed",
+          importJobId: job.id,
+          payload: {
+            rowNumber: row.rowNumber,
+            reason: error instanceof Error ? error.message : "Row import failed",
+          } as Prisma.InputJsonValue,
+        },
+      });
     }
 
     const processed = importedRows + duplicateRows + invalidRows + errorRows;
@@ -185,6 +255,32 @@ export async function startImportJob(filename: string, fileBuffer: Buffer) {
       invalidRows,
       errorRows,
       errorMessage: errorRows > 0 ? "Some rows failed during import" : null,
+    },
+  });
+  await db.processingEvent.create({
+    data: {
+      userId,
+      eventType: "import.completed",
+      importJobId: job.id,
+      payload: {
+        importedRows,
+        duplicateRows,
+        invalidRows,
+        errorRows,
+      } as Prisma.InputJsonValue,
+    },
+  });
+  await db.analyticsEvent.create({
+    data: {
+      userId,
+      type: "import_completed",
+      metadata: {
+        importJobId: job.id,
+        importedRows,
+        duplicateRows,
+        invalidRows,
+        errorRows,
+      } as Prisma.InputJsonValue,
     },
   });
 

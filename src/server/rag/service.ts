@@ -16,12 +16,7 @@ export async function ingestKnowledge(category: string, title: string, content: 
   const userId = await getDefaultUserId();
 
   const rule = await db.knowledgeRule.create({
-    data: {
-      userId,
-      category,
-      title,
-      content,
-    },
+    data: { userId, category, title, content },
   });
 
   const chunks = chunkText(content, 80);
@@ -47,11 +42,28 @@ function scoreChunk(query: string, chunk: KnowledgeChunk) {
 export async function retrieveContext(query: string, extraContext: string[] = []) {
   const db = getDb();
   const userId = await getDefaultUserId();
-  const chunks = await db.knowledgeChunk.findMany({
-    where: { knowledgeRule: { userId, active: true } },
-    include: { knowledgeRule: true },
-    take: 500,
-  });
+
+  const [profile, offers, chunks, recentMessages, approvedExamples] = await Promise.all([
+    db.businessProfile.findUnique({ where: { userId } }),
+    db.offer.findMany({ where: { userId, active: true }, orderBy: { updatedAt: "desc" }, take: 5 }),
+    db.knowledgeChunk.findMany({
+      where: { knowledgeRule: { userId, active: true } },
+      include: { knowledgeRule: true },
+      take: 500,
+    }),
+    db.message.findMany({
+      where: { userId, direction: "inbound" },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      include: { lead: true },
+    }),
+    db.approval.findMany({
+      where: { userId, status: "approved" },
+      orderBy: { reviewedAt: "desc" },
+      take: 3,
+      include: { message: true, lead: true },
+    }),
+  ]);
 
   const ranked = chunks
     .map((chunk) => ({ chunk, score: scoreChunk(query, chunk) }))
@@ -59,9 +71,42 @@ export async function retrieveContext(query: string, extraContext: string[] = []
     .sort((a, b) => b.score - a.score)
     .slice(0, 8);
 
-  const contextParts = ranked.map(
-    (item) => `[${item.chunk.knowledgeRule.category}] ${item.chunk.content}`
-  );
+  const profileContext = profile
+    ? [
+        `Company: ${profile.companyName}`,
+        `Value proposition: ${profile.valueProp}`,
+        `Tone rules: ${profile.toneRules}`,
+        `Pricing rules: ${profile.pricingRules}`,
+        `Objection rules: ${profile.objectionRules}`,
+      ].join("\n")
+    : "";
 
-  return [...extraContext, ...contextParts].join("\n\n");
+  const offersContext = offers
+    .map((offer) => `Offer: ${offer.name}${offer.price ? ` (${offer.currency} ${offer.price})` : ""} - ${offer.description}`)
+    .join("\n");
+
+  const ruleContext = ranked.map((item) => `[${item.chunk.knowledgeRule.category}] ${item.chunk.content}`).join("\n");
+  const recentReplyContext = recentMessages
+    .map(
+      (message) =>
+        `Recent inbound from ${message.lead.firstName} ${message.lead.lastName} (${message.lead.company}): ${message.body.slice(0, 280)}`
+    )
+    .join("\n");
+  const approvedExampleContext = approvedExamples
+    .map(
+      (approval) =>
+        `Approved outbound example for ${approval.lead.company}: subject="${approval.message.subject}" body="${approval.message.body.slice(0, 280)}"`
+    )
+    .join("\n");
+
+  return [
+    ...extraContext,
+    profileContext && `Business Profile:\n${profileContext}`,
+    offersContext && `Offer Details:\n${offersContext}`,
+    ruleContext && `Knowledge Rules:\n${ruleContext}`,
+    recentReplyContext && `Previous Messages:\n${recentReplyContext}`,
+    approvedExampleContext && `Approved Examples:\n${approvedExampleContext}`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
