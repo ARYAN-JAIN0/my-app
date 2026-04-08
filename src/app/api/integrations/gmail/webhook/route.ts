@@ -6,7 +6,7 @@ import { syncRecentReplies } from "@/server/orchestrators/gmail-sync-orchestrato
 export async function POST(request: NextRequest) {
   try {
     const secret = process.env.GMAIL_WEBHOOK_SECRET;
-    const inbound = request.headers.get("x-revo-webhook-secret");
+    const inbound = request.headers.get("x-rivo-webhook-secret");
     if (secret && inbound !== secret) {
       return toSuccessResponse({ success: false, reason: "unauthorized", message: "Invalid webhook secret" }, 401);
     }
@@ -17,3 +17,4 @@ export async function POST(request: NextRequest) {
     return toErrorResponse(error);
   }
 }
+

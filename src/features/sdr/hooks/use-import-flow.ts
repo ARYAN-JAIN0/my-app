@@ -80,7 +80,7 @@ export function useImportFlow() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "revo-leads-template.csv";
+    link.download = "rivo-leads-template.csv";
     link.click();
     URL.revokeObjectURL(url);
   }, []);
@@ -129,3 +129,4 @@ export function useImportFlow() {
     downloadTemplate,
   };
 }
+

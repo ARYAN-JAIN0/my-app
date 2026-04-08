@@ -15,7 +15,7 @@ export function WorkspaceSection() {
   const [emailBody, setEmailBody] = useState("");
   const [emailHistory, setEmailHistory] = useState<{ subject: string; date: string; status: string }[]>([
     { subject: "Following up on our conversation", date: "2024-01-15", status: "sent" },
-    { subject: "Introduction to RIVO1", date: "2024-01-10", status: "opened" },
+    { subject: "Introduction to Rivo", date: "2024-01-10", status: "opened" },
   ]);
 
   const handleSendEmail = () => {
@@ -112,3 +112,4 @@ export function WorkspaceSection() {
     </div>
   );
 }
+

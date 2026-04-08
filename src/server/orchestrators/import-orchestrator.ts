@@ -5,8 +5,10 @@ import { AppError } from "../core/http";
 import { generateOutboundDraft } from "../services/ai-tasks";
 import { parseLeadFile } from "../services/import-parser";
 import { classifyNeedsAction, scoreLead } from "../services/lead-scoring";
+import { recordActivity } from "../ops/activity";
 
 export async function startImportJob(filename: string, fileBuffer: Buffer) {
+  const started = Date.now();
   const db = getDb();
   const userId = await getDefaultUserId();
 
@@ -137,8 +139,8 @@ export async function startImportJob(filename: string, fileBuffer: Buffer) {
         },
       });
 
-      let subject = "Intro from Revo";
-      let body = `Hi ${lead.firstName},\n\nWanted to connect with you about growth opportunities at ${lead.company}.\n\nBest,\nRevo`;
+      let subject = "Intro from Rivo";
+      let body = `Hi ${lead.firstName},\n\nWanted to connect with you about growth opportunities at ${lead.company}.\n\nBest,\nRivo`;
 
       try {
         const aiDraft = await generateOutboundDraft(lead);
@@ -283,6 +285,21 @@ export async function startImportJob(filename: string, fileBuffer: Buffer) {
       } as Prisma.InputJsonValue,
     },
   });
+  await recordActivity({
+    actionKey: "import.start",
+    status: errorRows > 0 ? "warning" : "success",
+    requestPath: "/api/import/jobs",
+    service: "startImportJob",
+    importJobId: job.id,
+    durationMs: Date.now() - started,
+    details: {
+      filename,
+      importedRows,
+      duplicateRows,
+      invalidRows,
+      errorRows,
+    } as Prisma.InputJsonValue,
+  });
 
   return job.id;
 }
@@ -303,3 +320,4 @@ export async function getImportJobLogs(jobId: string) {
     orderBy: { rowNumber: "asc" },
   });
 }
+

@@ -4,6 +4,7 @@ import { getDefaultUserId } from "../core/identity";
 import { AppError } from "../core/http";
 import { buildLeadScoreExplanation, generateOutboundDraft } from "../services/ai-tasks";
 import { refreshGoogleAccessToken, sendGmailMessage } from "../integrations/gmail";
+import { recordActivity } from "../ops/activity";
 
 function toQueueStatus(lifecycle: LeadLifecycle): "needs-approval" | "draft" | "ready" {
   if (lifecycle === "pending_approval" || lifecycle === "replied" || lifecycle === "negotiating") return "needs-approval";
@@ -181,6 +182,7 @@ export async function getLeadDetail(leadId: string) {
 }
 
 export async function saveDraft(leadId: string, subject: string, body: string) {
+  const started = Date.now();
   const db = getDb();
   const userId = await getDefaultUserId();
   const lead = await db.lead.findUnique({ where: { id: leadId } });
@@ -200,10 +202,20 @@ export async function saveDraft(leadId: string, subject: string, body: string) {
     data: { subject, body, lifecycle: "edited", metadata: { editedAt: new Date().toISOString() } as Prisma.InputJsonValue },
   });
   await db.analyticsEvent.create({ data: { userId, type: "draft_saved", leadId, messageId: message.id } });
+  await recordActivity({
+    actionKey: "draft.save",
+    status: "success",
+    requestPath: `/api/sdr/leads/${leadId}/draft`,
+    service: "saveDraft",
+    leadId,
+    messageId: message.id,
+    durationMs: Date.now() - started,
+  });
   return message;
 }
 
 export async function regenerateDraft(leadId: string) {
+  const started = Date.now();
   const db = getDb();
   const userId = await getDefaultUserId();
   const lead = await db.lead.findUnique({ where: { id: leadId } });
@@ -241,10 +253,20 @@ export async function regenerateDraft(leadId: string) {
       messageId: message.id,
     },
   });
+  await recordActivity({
+    actionKey: "draft.regenerate",
+    status: "success",
+    requestPath: `/api/sdr/leads/${leadId}/draft`,
+    service: "regenerateDraft",
+    leadId,
+    messageId: message.id,
+    durationMs: Date.now() - started,
+  });
   return message;
 }
 
 export async function rejectDraft(leadId: string) {
+  const started = Date.now();
   const db = getDb();
   const userId = await getDefaultUserId();
   const message = await getLatestOutboundMessage(leadId);
@@ -257,9 +279,19 @@ export async function rejectDraft(leadId: string) {
   });
   await db.lead.update({ where: { id: leadId }, data: { lifecycle: "rejected", needsAction: true } });
   await db.analyticsEvent.create({ data: { userId, type: "draft_rejected", leadId, messageId: message.id } });
+  await recordActivity({
+    actionKey: "draft.reject",
+    status: "success",
+    requestPath: `/api/sdr/leads/${leadId}/draft`,
+    service: "rejectDraft",
+    leadId,
+    messageId: message.id,
+    durationMs: Date.now() - started,
+  });
 }
 
 export async function approveDraft(leadId: string) {
+  const started = Date.now();
   const db = getDb();
   const userId = await getDefaultUserId();
   const message = await getLatestOutboundMessage(leadId);
@@ -280,10 +312,20 @@ export async function approveDraft(leadId: string) {
       messageId: message.id,
     },
   });
+  await recordActivity({
+    actionKey: "draft.approve",
+    status: "success",
+    requestPath: `/api/sdr/leads/${leadId}/approve`,
+    service: "approveDraft",
+    leadId,
+    messageId: message.id,
+    durationMs: Date.now() - started,
+  });
   return message;
 }
 
 export async function sendApprovedMessage(leadId: string) {
+  const started = Date.now();
   const db = getDb();
   const userId = await getDefaultUserId();
   const lead = await db.lead.findUnique({ where: { id: leadId } });
@@ -352,6 +394,16 @@ export async function sendApprovedMessage(leadId: string) {
     });
   }
 
+  await recordActivity({
+    actionKey: "draft.send",
+    status: "success",
+    requestPath: `/api/sdr/leads/${leadId}/send`,
+    service: "sendApprovedMessage",
+    leadId,
+    messageId: updatedMessage.id,
+    durationMs: Date.now() - started,
+    details: { gmailMessageId: updatedMessage.gmailMessageId, threadId },
+  });
   return updatedMessage;
 }
 

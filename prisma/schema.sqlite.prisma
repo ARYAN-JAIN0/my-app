@@ -73,6 +73,14 @@ enum FollowupStatus {
   cancelled
 }
 
+enum JobRunStatus {
+  queued
+  running
+  completed
+  failed
+  cancelled
+}
+
 model User {
   id             String            @id @default(cuid())
   email          String            @unique
@@ -92,6 +100,14 @@ model User {
   threads        Thread[]
   messages       Message[]
   emailTemplates EmailTemplate[]
+  jobRuns        JobRun[]
+  activityLogs   ActivityLog[]
+  featureStatuses FeatureStatus[]
+  healthChecks   HealthCheckResult[]
+  systemSettings SystemSetting[]
+  aiProviderSettings AIProviderSetting[]
+  aiConnectionTests AIConnectionTestResult[]
+  stressTestRuns StressTestRun[]
 }
 
 model GmailAccount {
@@ -380,5 +396,179 @@ model EmailTemplate {
   @@index([userId, category])
   @@index([userId, active])
   @@unique([userId, name])
+}
+
+model JobRun {
+  id             String       @id @default(cuid())
+  userId         String
+  jobType        String
+  status         JobRunStatus @default(queued)
+  stage          String?
+  progress       Int          @default(0)
+  totalCount     Int?
+  processedCount Int?
+  successCount   Int          @default(0)
+  failureCount   Int          @default(0)
+  errorMessage   String?
+  metadata       Json?
+  startedAt      DateTime     @default(now())
+  completedAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stressMetrics  StressTestMetric[]
+
+  @@index([userId, jobType, createdAt])
+  @@index([status, updatedAt])
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String
+  actionKey   String
+  component   String?
+  requestPath String?
+  service     String?
+  leadId      String?
+  messageId   String?
+  importJobId String?
+  jobRunId    String?
+  status      String
+  durationMs  Int?
+  details     Json?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([actionKey, createdAt])
+  @@index([leadId])
+  @@index([jobRunId])
+}
+
+model FeatureStatus {
+  id                 String   @id @default(cuid())
+  userId             String
+  featureKey         String
+  route              String?
+  backendEndpoint    String?
+  description        String
+  status             String
+  dependencies       Json?
+  notes              String?
+  lastSuccessAt      DateTime?
+  lastCheckedAt      DateTime?
+  automatedVerified  Boolean  @default(false)
+  manualVerified     Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, featureKey])
+  @@index([status, updatedAt])
+}
+
+model HealthCheckResult {
+  id         String   @id @default(cuid())
+  userId     String
+  checkKey   String
+  status     String
+  latencyMs  Int?
+  message    String?
+  details    Json?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, checkKey, createdAt])
+  @@index([status, createdAt])
+}
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  userId    String
+  key       String
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([updatedAt])
+}
+
+model AIProviderSetting {
+  id               String   @id @default(cuid())
+  userId           String
+  provider         String
+  enabled          Boolean  @default(false)
+  baseUrl          String?
+  apiKey           String?
+  model            String?
+  fallbackProvider String?
+  fallbackModel    String?
+  mode             String?  @default("local-first")
+  temperature      Float?   @default(0.3)
+  timeoutMs        Int?     @default(30000)
+  retries          Int?     @default(1)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([enabled, updatedAt])
+}
+
+model AIConnectionTestResult {
+  id         String   @id @default(cuid())
+  userId     String
+  provider   String
+  success    Boolean
+  latencyMs  Int?
+  message    String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, provider, createdAt])
+}
+
+model StressTestRun {
+  id              String   @id @default(cuid())
+  userId          String
+  name            String
+  status          JobRunStatus @default(queued)
+  leadCount       Int
+  mode            String
+  avgLatencyMs    Float?
+  p95LatencyMs    Float?
+  successCount    Int      @default(0)
+  failureCount    Int      @default(0)
+  queueDepth      Int?
+  slowestEndpoint String?
+  notes           String?
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  metrics         StressTestMetric[]
+
+  @@index([userId, createdAt])
+  @@index([status, updatedAt])
+}
+
+model StressTestMetric {
+  id              String   @id @default(cuid())
+  stressTestRunId String
+  jobRunId        String?
+  name            String
+  value           Float
+  unit            String?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  stressTestRun   StressTestRun @relation(fields: [stressTestRunId], references: [id], onDelete: Cascade)
+  jobRun          JobRun?  @relation(fields: [jobRunId], references: [id], onDelete: SetNull)
+
+  @@index([stressTestRunId, createdAt])
+  @@index([jobRunId])
 }
 

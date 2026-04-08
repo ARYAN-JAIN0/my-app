@@ -17,7 +17,7 @@ export interface FeatureFlags {
 const isDevelopment = process.env.NODE_ENV === "development";
 
 export const appConfig: AppConfig = {
-  appName: "RIVO1",
+  appName: "Rivo",
   version: "1.0.0",
   environment: isDevelopment ? "development" : "production",
   apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || "",
@@ -38,12 +38,12 @@ export const environments = {
     logLevel: "debug" as const,
   },
   staging: {
-    apiBaseUrl: "https://staging.rivo1.com",
+    apiBaseUrl: "https://staging.rivo.app",
     debugMode: true,
     logLevel: "info" as const,
   },
   production: {
-    apiBaseUrl: "https://api.rivo1.com",
+    apiBaseUrl: "https://api.rivo.app",
     debugMode: false,
     logLevel: "error" as const,
   },
@@ -56,3 +56,4 @@ export function getConfig(): AppConfig {
 export function isFeatureEnabled(feature: keyof FeatureFlags): boolean {
   return appConfig.features[feature];
 }
+

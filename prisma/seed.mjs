@@ -27,8 +27,8 @@ async function ensureDraftForLead(userId, lead, subject, body) {
 }
 
 async function main() {
-  const email = process.env.DEFAULT_USER_EMAIL || "owner@revo.local";
-  const name = process.env.DEFAULT_USER_NAME || "Revo Owner";
+  const email = process.env.DEFAULT_USER_EMAIL || "owner@rivo.local";
+  const name = process.env.DEFAULT_USER_NAME || "Rivo Owner";
 
   const user = await prisma.user.upsert({
     where: { email },
@@ -39,7 +39,7 @@ async function main() {
   await prisma.businessProfile.upsert({
     where: { userId: user.id },
     update: {
-      companyName: "Revo Labs",
+      companyName: "Rivo Labs",
       valueProp: "AI SDR assistant for high-conversion outbound",
       toneRules: "Confident, concise, never overpromise",
       pricingRules: "Never commit discounts beyond policy",
@@ -47,7 +47,7 @@ async function main() {
     },
     create: {
       userId: user.id,
-      companyName: "Revo Labs",
+      companyName: "Rivo Labs",
       valueProp: "AI SDR assistant for high-conversion outbound",
       toneRules: "Confident, concise, never overpromise",
       pricingRules: "Never commit discounts beyond policy",
@@ -109,7 +109,7 @@ async function main() {
       user.id,
       lead,
       `Quick note for ${company}`,
-      `Hi ${firstName},\n\nI wanted to share a short idea on improving outbound conversion at ${company}.\n\nBest,\nRevo`
+      `Hi ${firstName},\n\nI wanted to share a short idea on improving outbound conversion at ${company}.\n\nBest,\nRivo`
     );
 
     const approval = await prisma.approval.findFirst({
@@ -144,7 +144,7 @@ async function main() {
   }
 
   const ruleData = [
-    ["business_context", "Company Context", "Revo targets B2B SaaS teams with outbound pain points."],
+    ["business_context", "Company Context", "Rivo targets B2B SaaS teams with outbound pain points."],
     ["tone_rules", "Tone Policy", "Keep language professional, concrete, and respectful."],
     ["pricing_rules", "Pricing Guardrails", "Avoid fixed discount promises without approval."],
     ["objection_handling", "Objection Playbook", "Acknowledge concern, provide evidence, ask next-step question."],
@@ -216,3 +216,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { Menu, RefreshCw, Settings } from "lucide-react";
@@ -18,12 +18,16 @@ const titles: Record<string, string> = {
   "/negotiation": "Negotiation",
   "/rag": "RAG Workspace",
   "/settings": "Workspace Settings",
+  "/status": "System Status",
+  "/jobs": "Pipeline Jobs",
+  "/data": "Data Explorer",
+  "/qa": "Stress & QA",
   "/support": "Support",
 };
 
 export function Header({ onOpenMobileMenu }: HeaderProps) {
   const pathname = usePathname();
-  const title = titles[pathname] ?? "REVO Workspace";
+  const title = titles[pathname] ?? "Rivo Workspace";
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-outline-variant/20 bg-background/85 px-4 backdrop-blur-md ambient-glow lg:px-6">
@@ -36,9 +40,7 @@ export function Header({ onOpenMobileMenu }: HeaderProps) {
         >
           <Menu className="h-4 w-4" />
         </button>
-        <h2 className="font-headline text-lg font-semibold text-primary display-tight">
-          {title}
-        </h2>
+        <h2 className="font-headline text-lg font-semibold text-primary display-tight">{title}</h2>
       </div>
       <div className="flex items-center gap-3">
         <button
@@ -58,14 +60,15 @@ export function Header({ onOpenMobileMenu }: HeaderProps) {
         </Link>
         <div className="flex items-center gap-3 rounded-lg border border-outline-variant/20 bg-surface-container px-2.5 py-1.5">
           <div className="text-right leading-tight">
-            <p className="text-xs font-semibold text-foreground">Alex Rivera</p>
-            <p className="text-[10px] text-muted-foreground">Senior SDR</p>
+            <p className="text-xs font-semibold text-foreground">Rivo Operator</p>
+            <p className="text-[10px] text-muted-foreground">Default Workspace</p>
           </div>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary/20 bg-surface-container-low text-xs font-bold text-primary">
-            AR
+            RV
           </div>
         </div>
       </div>
     </header>
   );
 }
+

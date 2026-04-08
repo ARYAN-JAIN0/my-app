@@ -1,4 +1,5 @@
 import { AppError } from "../core/http";
+import { getAiProviderSetting, listAiProviderSettings } from "../ops/settings";
 
 interface ProviderConfig {
   name: "local" | "openrouter" | "groq";
@@ -66,6 +67,52 @@ function getProviders(): ProviderConfig[] {
   return providers;
 }
 
+async function getConfiguredProviders(preferredProvider?: ProviderConfig["name"]) {
+  const storedSettings = await listAiProviderSettings().catch(() => []);
+
+  const envProviders = getProviders();
+  if (storedSettings.length === 0) {
+    if (preferredProvider) {
+      return envProviders.sort((a, b) => Number(b.name === preferredProvider) - Number(a.name === preferredProvider));
+    }
+    return envProviders;
+  }
+
+  const configured: ProviderConfig[] = [];
+  for (const setting of storedSettings) {
+    if (!setting.enabled) continue;
+    configured.push({
+      name: setting.provider as ProviderConfig["name"],
+      baseUrl: setting.baseUrl ? normalizeBaseUrl(setting.baseUrl) : envProviders.find((provider) => provider.name === setting.provider)?.baseUrl || "",
+      apiKey: setting.apiKey || envProviders.find((provider) => provider.name === setting.provider)?.apiKey,
+      model: setting.model || envProviders.find((provider) => provider.name === setting.provider)?.model || "",
+    });
+    if (setting.fallbackProvider && setting.fallbackModel) {
+      const fallbackSetting = await getAiProviderSetting(setting.fallbackProvider).catch(() => null);
+      configured.push({
+        name: setting.fallbackProvider as ProviderConfig["name"],
+        baseUrl:
+          fallbackSetting?.baseUrl
+            ? normalizeBaseUrl(fallbackSetting.baseUrl)
+            : envProviders.find((provider) => provider.name === setting.fallbackProvider)?.baseUrl || "",
+        apiKey: fallbackSetting?.apiKey || envProviders.find((provider) => provider.name === setting.fallbackProvider)?.apiKey,
+        model: setting.fallbackModel,
+      });
+    }
+  }
+
+  const deduped = configured.filter(
+    (provider, index, array) =>
+      array.findIndex((candidate) => candidate.name === provider.name && candidate.model === provider.model) === index
+  );
+
+  if (preferredProvider) {
+    return deduped.sort((a, b) => Number(b.name === preferredProvider) - Number(a.name === preferredProvider));
+  }
+
+  return deduped;
+}
+
 function taskTemperature(task: AiTaskType) {
   if (task === "reply_analysis") return 0.1;
   if (task === "score_explanation") return 0.2;
@@ -82,7 +129,7 @@ async function callProvider(provider: ProviderConfig, task: AiTaskType, messages
     headers: {
       "Content-Type": "application/json",
       ...(provider.apiKey ? { Authorization: `Bearer ${provider.apiKey}` } : {}),
-      ...(provider.name === "openrouter" ? { "HTTP-Referer": process.env.APP_URL || "https://revo.local" } : {}),
+      ...(provider.name === "openrouter" ? { "HTTP-Referer": process.env.APP_URL || "https://rivo.local" } : {}),
     },
     body: JSON.stringify({
       model: provider.model,
@@ -100,8 +147,8 @@ async function callProvider(provider: ProviderConfig, task: AiTaskType, messages
   return String(json?.choices?.[0]?.message?.content || "").trim();
 }
 
-export async function runAiTask(task: AiTaskType, messages: ChatMessage[]) {
-  const providers = getProviders();
+export async function runAiTask(task: AiTaskType, messages: ChatMessage[], preferredProvider?: ProviderConfig["name"]) {
+  const providers = await getConfiguredProviders(preferredProvider);
   const attempts: string[] = [];
 
   for (const provider of providers) {
@@ -129,12 +176,12 @@ export async function runAiTask(task: AiTaskType, messages: ChatMessage[]) {
   });
 }
 
-export async function runJsonTask<T>(task: AiTaskType, messages: ChatMessage[]): Promise<T> {
+export async function runJsonTask<T>(task: AiTaskType, messages: ChatMessage[], preferredProvider?: ProviderConfig["name"]): Promise<T> {
   const withJsonPrompt: ChatMessage[] = [
     { role: "system", content: "Return only valid JSON. No markdown." },
     ...messages,
   ];
-  const result = await runAiTask(task, withJsonPrompt);
+  const result = await runAiTask(task, withJsonPrompt, preferredProvider);
   try {
     return JSON.parse(result.content) as T;
   } catch {
@@ -146,3 +193,4 @@ export async function runJsonTask<T>(task: AiTaskType, messages: ChatMessage[]):
     });
   }
 }
+

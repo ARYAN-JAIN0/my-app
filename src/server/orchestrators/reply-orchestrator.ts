@@ -4,6 +4,7 @@ import { getDefaultUserId } from "../core/identity";
 import { AppError } from "../core/http";
 import { analyzeReply, generateReplyDraft } from "../services/ai-tasks";
 import { needsEscalation } from "../services/lead-scoring";
+import { recordActivity } from "../ops/activity";
 
 export async function processInboundReply(params: {
   threadId?: string;
@@ -14,6 +15,7 @@ export async function processInboundReply(params: {
   gmailMessageId?: string;
   gmailThreadId?: string;
 }) {
+  const started = Date.now();
   const db = getDb();
   const userId = await getDefaultUserId();
 
@@ -127,6 +129,16 @@ export async function processInboundReply(params: {
       messageId: inbound.id,
       payload: { intent: analysis.intent } as Prisma.InputJsonValue,
     },
+  });
+  await recordActivity({
+    actionKey: "reply.process",
+    status: "success",
+    requestPath: "/api/replies/analyze",
+    service: "processInboundReply",
+    leadId,
+    messageId: inbound.id,
+    durationMs: Date.now() - started,
+    details: { intent: analysis.intent, escalationRequired: escalate } as Prisma.InputJsonValue,
   });
 
   return {

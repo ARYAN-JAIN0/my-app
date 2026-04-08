@@ -1,5 +1,5 @@
 // Application-wide constants
-export const APP_NAME = "RIVO1";
+export const APP_NAME = "Rivo";
 export const APP_VERSION = "1.0.0";
 
 // API endpoints
@@ -55,3 +55,4 @@ export const FEATURE_FLAGS = {
   RAG_ENABLED: true,
   NEGOTIATION_BOT: false,
 } as const;
+

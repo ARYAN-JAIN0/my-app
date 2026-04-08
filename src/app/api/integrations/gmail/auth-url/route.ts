@@ -8,7 +8,7 @@ export async function GET() {
   try {
     const state = randomUUID();
     const cookieStore = await cookies();
-    cookieStore.set("revo_gmail_oauth_state", state, {
+    cookieStore.set("rivo_gmail_oauth_state", state, {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
@@ -21,3 +21,4 @@ export async function GET() {
     return toErrorResponse(error);
   }
 }
+

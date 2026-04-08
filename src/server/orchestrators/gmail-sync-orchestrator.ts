@@ -2,6 +2,7 @@ import { getDb } from "../core/db";
 import { getDefaultUserId } from "../core/identity";
 import { getGmailMessage, listRecentInboxMessages, refreshGoogleAccessToken } from "../integrations/gmail";
 import { processInboundReply } from "./reply-orchestrator";
+import { recordActivity } from "../ops/activity";
 
 function extractHeader(headers: Array<{ name: string; value: string }>, key: string) {
   return headers.find((h) => h.name.toLowerCase() === key.toLowerCase())?.value;
@@ -13,6 +14,7 @@ function decodeBody(data?: string) {
 }
 
 export async function syncRecentReplies() {
+  const started = Date.now();
   const db = getDb();
   const userId = await getDefaultUserId();
   let account = await db.gmailAccount.findFirst({ where: { userId }, orderBy: { updatedAt: "desc" } });
@@ -64,5 +66,13 @@ export async function syncRecentReplies() {
     }
   }
 
+  await recordActivity({
+    actionKey: "gmail.sync",
+    status: "success",
+    requestPath: "/api/integrations/gmail/sync",
+    service: "syncRecentReplies",
+    durationMs: Date.now() - started,
+    details: { synced: imported.length } as never,
+  });
   return { synced: imported.length, messageIds: imported };
 }

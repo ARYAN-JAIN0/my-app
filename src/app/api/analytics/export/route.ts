@@ -35,7 +35,7 @@ export async function GET() {
     return new Response(body, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": 'attachment; filename="revo-analytics.csv"',
+        "Content-Disposition": 'attachment; filename="rivo-analytics.csv"',
       },
     });
   } catch (error) {
@@ -43,3 +43,4 @@ export async function GET() {
     return new Response(message, { status: 500 });
   }
 }
+

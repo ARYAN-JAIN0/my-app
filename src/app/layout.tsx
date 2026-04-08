@@ -16,7 +16,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "RIVO1 - Sales Development Platform",
+  title: "Rivo - Sales Development Platform",
   description: "AI-powered sales development and CRM platform",
 };
 
@@ -40,3 +40,4 @@ export default function RootLayout({
     </html>
   );
 }
+

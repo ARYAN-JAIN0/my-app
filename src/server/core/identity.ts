@@ -2,8 +2,8 @@ import { getDb } from "./db";
 
 export async function getDefaultUserId() {
   const db = getDb();
-  const email = process.env.DEFAULT_USER_EMAIL || "owner@revo.local";
-  const name = process.env.DEFAULT_USER_NAME || "Revo Owner";
+  const email = process.env.DEFAULT_USER_EMAIL || "owner@rivo.local";
+  const name = process.env.DEFAULT_USER_NAME || "Rivo Owner";
 
   const user = await db.user.upsert({
     where: { email },
@@ -14,3 +14,4 @@ export async function getDefaultUserId() {
 
   return user.id;
 }
+

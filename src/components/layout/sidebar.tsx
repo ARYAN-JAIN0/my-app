@@ -1,14 +1,19 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   BarChart3,
+  BrainCircuit,
+  Database,
   FileText,
+  HeartPulse,
   HelpCircle,
+  Layers3,
   PersonStanding,
   Settings,
+  ShieldCheck,
   Upload,
   X,
 } from "lucide-react";
@@ -23,9 +28,16 @@ const primaryRoutes = [
   { label: "Import Leads", href: "/sdr/import-leads", icon: Upload },
   { label: "Templates", href: "/sdr/templates", icon: FileText },
   { label: "Analytics", href: "/sdr/analytics", icon: BarChart3 },
+  { label: "RAG", href: "/rag", icon: BrainCircuit },
+  { label: "Status", href: "/status", icon: HeartPulse },
+  { label: "Jobs", href: "/jobs", icon: Layers3 },
+  { label: "Data", href: "/data", icon: Database },
+  { label: "QA", href: "/qa", icon: ShieldCheck },
 ];
 
 const secondaryRoutes = [
+  { label: "CRM", href: "/crm", icon: PersonStanding },
+  { label: "Finance", href: "/finance", icon: BarChart3 },
   { label: "Settings", href: "/settings", icon: Settings },
   { label: "Support", href: "/support", icon: HelpCircle },
 ];
@@ -60,9 +72,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
               R
             </div>
             <div>
-              <h1 className="font-headline text-2xl font-black display-tight text-primary">
-                REVO
-              </h1>
+              <h1 className="font-headline text-2xl font-black display-tight text-primary">Rivo</h1>
               <p className="label-meta text-muted-foreground">Precision Intelligence</p>
             </div>
           </div>
@@ -76,7 +86,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
           </button>
         </div>
 
-        <nav className="flex-1 space-y-1 px-1">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-1">
           {primaryRoutes.map((route) => {
             const active = isActivePath(pathname, route.href);
             return (
@@ -114,3 +124,4 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
     </>
   );
 }
+

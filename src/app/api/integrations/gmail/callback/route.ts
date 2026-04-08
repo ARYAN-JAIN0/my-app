@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const state = request.nextUrl.searchParams.get("state");
   const cookieStore = await cookies();
-  const expectedState = cookieStore.get("revo_gmail_oauth_state")?.value;
+  const expectedState = cookieStore.get("rivo_gmail_oauth_state")?.value;
   if (!code) {
     return NextResponse.redirect(new URL("/sdr?gmail=missing_code", request.url));
   }
@@ -57,10 +57,11 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    cookieStore.delete("revo_gmail_oauth_state");
+    cookieStore.delete("rivo_gmail_oauth_state");
     return NextResponse.redirect(new URL("/sdr?gmail=connected", request.url));
   } catch {
-    cookieStore.delete("revo_gmail_oauth_state");
+    cookieStore.delete("rivo_gmail_oauth_state");
     return NextResponse.redirect(new URL("/sdr?gmail=failed", request.url));
   }
 }
+

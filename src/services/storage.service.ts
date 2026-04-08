@@ -4,7 +4,7 @@ type StorageValue = string | number | boolean | object | null;
 class StorageService {
   private prefix: string;
 
-  constructor(prefix: string = "rivo1") {
+  constructor(prefix: string = "rivo") {
     this.prefix = prefix;
   }
 
@@ -82,4 +82,5 @@ class StorageService {
 }
 
 export const storage = new StorageService();
-export const session = new StorageService("rivo1:session");
+export const session = new StorageService("rivo:session");
+
