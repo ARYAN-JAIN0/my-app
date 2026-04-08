@@ -1,0 +1,365 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LeadLifecycle {
+  imported
+  validated
+  duplicate_filtered
+  queued
+  scored
+  draft_generated
+  pending_approval
+  approved
+  sent
+  replied
+  negotiating
+  won
+  lost
+  paused
+  rejected
+}
+
+enum MessageLifecycle {
+  draft
+  saved
+  pending_approval
+  approved
+  sending
+  sent
+  failed
+  rejected
+  edited
+}
+
+enum ImportJobStatus {
+  queued
+  processing
+  completed
+  failed
+}
+
+enum ImportRowStatus {
+  imported
+  duplicate
+  invalid
+  failed
+}
+
+enum ApprovalStatus {
+  pending
+  approved
+  rejected
+}
+
+enum ReplyIntent {
+  interested
+  not_interested
+  objection
+  pricing
+  meeting
+  unknown
+}
+
+enum FollowupStatus {
+  scheduled
+  sent
+  skipped
+  cancelled
+}
+
+model User {
+  id             String            @id @default(cuid())
+  email          String            @unique
+  name           String
+  role           String            @default("owner")
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  gmailAccounts  GmailAccount[]
+  businessProfile BusinessProfile?
+  offers         Offer[]
+  leads          Lead[]
+  importJobs     ImportJob[]
+  approvals      Approval[]
+  knowledgeRules KnowledgeRule[]
+  analyticsEvents AnalyticsEvent[]
+  followups      Followup[]
+  threads        Thread[]
+  messages       Message[]
+}
+
+model GmailAccount {
+  id             String   @id @default(cuid())
+  userId         String
+  email          String
+  accessToken    String?
+  refreshToken   String?
+  expiryDate     DateTime?
+  scope          String?
+  connectedAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@unique([userId, email])
+}
+
+model BusinessProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  companyName    String
+  valueProp      String
+  toneRules      String
+  pricingRules   String
+  objectionRules String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Offer {
+  id             String   @id @default(cuid())
+  userId         String
+  name           String
+  description    String
+  price          Float?
+  currency       String?  @default("USD")
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, active])
+}
+
+model Lead {
+  id                String         @id @default(cuid())
+  userId            String
+  firstName         String
+  lastName          String
+  email             String
+  phone             String?
+  company           String
+  title             String?
+  source            String?
+  priority          String         @default("medium")
+  score             Int?
+  confidenceScore   Float?
+  signalBreakdown   Json?
+  notes             String?
+  tags              Json?
+  lifecycle         LeadLifecycle  @default(imported)
+  lastContactedAt   DateTime?
+  lastRepliedAt     DateTime?
+  needsAction       Boolean        @default(false)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages          Message[]
+  approvals         Approval[]
+  followups         Followup[]
+  threadLinks       ThreadLead[]
+  importRows        ImportRow[]
+
+  @@index([userId, lifecycle])
+  @@index([userId, score])
+  @@index([userId, needsAction])
+  @@unique([userId, email, company])
+}
+
+model Thread {
+  id              String       @id @default(cuid())
+  userId          String
+  gmailThreadId   String?      @unique
+  subject         String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages        Message[]
+  leads           ThreadLead[]
+
+  @@index([userId, updatedAt])
+}
+
+model ThreadLead {
+  threadId        String
+  leadId          String
+  linkedAt        DateTime @default(now())
+  thread          Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  lead            Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@id([threadId, leadId])
+  @@index([leadId])
+}
+
+model Message {
+  id                String            @id @default(cuid())
+  userId            String
+  leadId            String
+  threadId          String?
+  gmailMessageId    String?           @unique
+  fromEmail         String?
+  toEmail           String?
+  subject           String
+  body              String
+  lifecycle         MessageLifecycle  @default(draft)
+  direction         String            @default("outbound")
+  aiSummary         String?
+  replyIntent       ReplyIntent?
+  metadata          Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  sentAt            DateTime?
+
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lead              Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  thread            Thread?           @relation(fields: [threadId], references: [id], onDelete: SetNull)
+  approvals         Approval[]
+
+  @@index([leadId, createdAt])
+  @@index([threadId, createdAt])
+  @@index([userId, lifecycle])
+  @@index([direction, createdAt])
+}
+
+model Approval {
+  id                String         @id @default(cuid())
+  userId            String
+  leadId            String
+  messageId         String
+  status            ApprovalStatus @default(pending)
+  reviewerNote      String?
+  reviewedAt        DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lead              Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  message           Message        @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([leadId])
+  @@index([messageId])
+}
+
+model ImportJob {
+  id                String         @id @default(cuid())
+  userId            String
+  filename          String
+  status            ImportJobStatus @default(queued)
+  stage             String         @default("queued")
+  progress          Int            @default(0)
+  totalRows         Int            @default(0)
+  importedRows      Int            @default(0)
+  duplicateRows     Int            @default(0)
+  invalidRows       Int            @default(0)
+  errorRows         Int            @default(0)
+  errorMessage      String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  completedAt       DateTime?
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rows              ImportRow[]
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+model ImportRow {
+  id                String         @id @default(cuid())
+  importJobId       String
+  leadId            String?
+  rowNumber         Int
+  status            ImportRowStatus
+  rawData           Json
+  errorReason       String?
+  createdAt         DateTime       @default(now())
+  importJob         ImportJob      @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+  lead              Lead?          @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([importJobId, rowNumber])
+  @@index([status])
+}
+
+model KnowledgeRule {
+  id                String         @id @default(cuid())
+  userId            String
+  category          String
+  title             String
+  content           String
+  active            Boolean        @default(true)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chunks            KnowledgeChunk[]
+
+  @@index([userId, category])
+  @@index([active])
+}
+
+model KnowledgeChunk {
+  id                String         @id @default(cuid())
+  knowledgeRuleId   String
+  chunkIndex        Int
+  content           String
+  tokenCount        Int?
+  embedding         Json?
+  createdAt         DateTime       @default(now())
+  knowledgeRule     KnowledgeRule  @relation(fields: [knowledgeRuleId], references: [id], onDelete: Cascade)
+
+  @@unique([knowledgeRuleId, chunkIndex])
+  @@index([knowledgeRuleId])
+}
+
+model AnalyticsEvent {
+  id                String         @id @default(cuid())
+  userId            String
+  type              String
+  leadId            String?
+  messageId         String?
+  metadata          Json?
+  createdAt         DateTime       @default(now())
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, createdAt])
+  @@index([leadId])
+  @@index([messageId])
+}
+
+model Followup {
+  id                String         @id @default(cuid())
+  userId            String
+  leadId            String
+  dayOffset         Int
+  dueAt             DateTime
+  sentAt            DateTime?
+  status            FollowupStatus @default(scheduled)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lead              Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([status, dueAt])
+  @@unique([leadId, dayOffset])
+}
+
+model ProcessingEvent {
+  id                String         @id @default(cuid())
+  userId            String
+  eventType         String
+  leadId            String?
+  messageId         String?
+  importJobId       String?
+  payload           Json?
+  createdAt         DateTime       @default(now())
+
+  @@index([userId, eventType, createdAt])
+  @@index([leadId])
+  @@index([messageId])
+  @@index([importJobId])
+}
